@@ -12,12 +12,57 @@ from datetime import date, datetime
 from io import BytesIO
 
 from cultivos import CULTIVOS
-from core import clima, gdc, rinde, base_datos
+from core import clima, gdc, rinde, base_datos, auth
 from ui import estilos, graficos
 
 st.set_page_config(page_title="Monitor Agrícola", page_icon="🌾",
                    layout="wide", initial_sidebar_state="expanded")
 st.markdown(estilos.CSS, unsafe_allow_html=True)
+
+# ============================================================
+#  SISTEMA DE AUTENTICACIÓN
+# ============================================================
+auth.inicializar_tabla_usuarios()
+
+if "user_id" not in st.session_state:
+    st.markdown("<h2 style='text-align: center; margin-top: 3rem;'>🌾 Monitor Agrícola</h2>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; color: #64748b;'>Inicia sesión o regístrate para acceder a tus lotes sincronizados.</p>", unsafe_allow_html=True)
+    
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        tab_login, tab_reg = st.tabs(["🔑 Iniciar Sesión", "📝 Registrarse"])
+        
+        with tab_login:
+            with st.form("form_login"):
+                email_log = st.text_input("Email")
+                pass_log = st.text_input("Contraseña", type="password")
+                if st.form_submit_button("Entrar", use_container_width=True):
+                    user = auth.verificar_login(email_log, pass_log)
+                    if user:
+                        st.session_state.user_id = user["id"]
+                        st.session_state.user_email = user["email"]
+                        st.session_state.user_name = user["nombre"]
+                        st.success(f"Bienvenido {user['nombre']}")
+                        st.rerun()
+                    else:
+                        st.error("Credenciales incorrectas")
+                        
+        with tab_reg:
+            with st.form("form_registro"):
+                nombre_reg = st.text_input("Nombre completo")
+                email_reg = st.text_input("Email")
+                pass_reg = st.text_input("Contraseña", type="password")
+                if st.form_submit_button("Crear cuenta", use_container_width=True):
+                    if nombre_reg and email_reg and pass_reg:
+                        ok, msg = auth.registrar_usuario(email_reg, nombre_reg, pass_reg)
+                        if ok:
+                            st.success(msg + ". Ya puedes iniciar sesión.")
+                        else:
+                            st.error(msg)
+                    else:
+                        st.warning("Completa todos los campos")
+    st.stop()
+
 base_datos.inicializar()
 
 # ============================================================
@@ -31,6 +76,12 @@ with st.sidebar:
         <div style='font-size:0.72rem;color:#64748b;margin-top:2px;'>v2.5</div>
     </div><hr>
     """, unsafe_allow_html=True)
+    
+    st.markdown(f"<div style='font-size: 0.9rem; margin-bottom: 1rem;'>👤 Hola, **{st.session_state.user_name}**</div>", unsafe_allow_html=True)
+    if st.button("🚪 Cerrar Sesión", use_container_width=True):
+        auth.logout()
+        st.rerun()
+    st.markdown("<hr style='margin-top:0;'>", unsafe_allow_html=True)
 
     lotes_guardados = base_datos.listar_lotes()
     modo_lote = st.radio("", ["📂 Usar lote guardado", "➕ Nuevo lote"],

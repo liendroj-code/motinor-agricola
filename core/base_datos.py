@@ -13,6 +13,10 @@ import time
 
 def get_session_id():
     """Obtiene o crea un ID único para la sesión actual"""
+    if "user_id" in st.session_state:
+        # Usar el ID del usuario autenticado para que los datos persistan en su DB
+        return f"user_{st.session_state.user_id}"
+        
     if "session_id" not in st.session_state:
         # Crear ID único basado en timestamp + usuario anónimo
         import uuid
