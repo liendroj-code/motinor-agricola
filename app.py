@@ -162,7 +162,7 @@ with st.sidebar:
         fecha_siembra   = st.date_input("Fecha de siembra", value=date(2025, 12, 20),
                                          min_value=date(2020,1,1), max_value=date.today())
         rinde_potencial = st.number_input("Rinde potencial (kg/ha)",
-                                           value=int(rinde_potencial) if rinde_potencial else 3000,
+                                           value=cultivo_mod.RINDE_POTENCIAL_BASE,
                                            step=100, min_value=500, max_value=20000)
         nombre_lote    = f"{estab_n} — {lote_n}" if estab_n and lote_n else "Nuevo lote"
         lote_id_activo = None
