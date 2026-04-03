@@ -62,22 +62,14 @@ def verificar_login(email, password):
         })
         
         if res.user:
+            # Guardar la sesión en st.session_state
+            st.session_state.supabase_session = res.session
+            st.session_state.user_id = res.user.id
+            st.session_state.user_name = res.user.user_metadata.get('nombre', email)
+            
             return {"success": True, "user": res.user, "session": res.session}
         else:
             return {"success": False, "error": "Credenciales inválidas"}
             
     except Exception as e:
         return {"success": False, "error": str(e)}
-
-
-def cerrar_sesion():
-    """Cierra la sesión actual"""
-    supabase = get_supabase()
-    supabase.auth.sign_out()
-    st.session_state.clear()
-
-
-def obtener_usuario_actual():
-    """Obtiene el usuario actual si hay sesión activa"""
-    supabase = get_supabase()
-    return supabase.auth.get_user()
