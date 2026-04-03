@@ -166,10 +166,7 @@ with st.sidebar:
                                            step=100, min_value=500, max_value=20000)
         nombre_lote    = f"{estab_n} — {lote_n}" if estab_n and lote_n else "Nuevo lote"
         lote_id_activo = None
-     # En app.py, antes de guardar el lote
-st.write(f"Debug - user_id en session_state: {st.session_state.get('user_id')}")
-st.write(f"Debug - ¿Hay sesión? {'supabase_session' in st.session_state}")
-
+     
         if st.button("💾 Guardar lote", key="btn_guardar_lote", type="primary"):
             if not estab_n or not lote_n or not localidad_n:
                 st.error("⚠️ Completá establecimiento, lote y localidad.")
