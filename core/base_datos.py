@@ -7,13 +7,10 @@ from supabase import create_client
 
 def get_supabase():
     """Obtiene el cliente de Supabase con la sesión del usuario actual"""
-    # Usar las credenciales de st.secrets
     url = st.secrets["SUPABASE_URL"]
     key = st.secrets["SUPABASE_KEY"]
     
-    # Si hay sesión activa, usar el token del usuario
     if "supabase_session" in st.session_state:
-        # Crear cliente con el token de sesión
         client = create_client(url, key)
         client.auth.set_session(
             st.session_state.supabase_session.access_token,
@@ -21,7 +18,6 @@ def get_supabase():
         )
         return client
     else:
-        # Cliente sin autenticación
         return create_client(url, key)
 
 def get_session_id():
@@ -67,7 +63,53 @@ def guardar_lote(datos):
         st.error(f"Error al guardar lote: {e}")
         raise
 
-# El resto de funciones (listar_lotes, actualizar_lote, eliminar_lote) siguen igual
+def listar_lotes():
+    """Lista todos los lotes correspondientes al usuario de la sesión actual"""
+    supabase = get_supabase()
+    user_uid = get_session_id()
+    
+    try:
+        res = supabase.table("lotes").select("*").eq("user_id", user_uid).order("id", desc=True).execute()
+        return res.data
+    except Exception as e:
+        print(f"Error al listar lotes: {e}")
+        return []
+
+def actualizar_lote(lote_id, datos):
+    """Actualiza un lote existente en Supabase"""
+    supabase = get_supabase()
+    user_uid = get_session_id()
+    
+    data_to_update = {
+        "campana": datos['campana'],
+        "establecimiento": datos['establecimiento'],
+        "lote": datos['lote'],
+        "localidad": datos['localidad'],
+        "provincia": datos.get('provincia', ''),
+        "lat": datos['lat'],
+        "lon": datos['lon'],
+        "cultivo": datos['cultivo'],
+        "variedad": datos['variedad'],
+        "fecha_siembra": datos['fecha_siembra'],
+        "rinde_potencial": datos['rinde_potencial']
+    }
+    
+    try:
+        supabase.table("lotes").update(data_to_update).eq("id", lote_id).eq("user_id", user_uid).execute()
+    except Exception as e:
+        st.error(f"Error al actualizar lote: {e}")
+        raise
+
+def eliminar_lote(lote_id):
+    """Elimina un lote y sus monitoreos asociados (ON DELETE CASCADE)"""
+    supabase = get_supabase()
+    user_uid = get_session_id()
+    
+    try:
+        supabase.table("lotes").delete().eq("id", lote_id).eq("user_id", user_uid).execute()
+    except Exception as e:
+        st.error(f"Error al eliminar lote: {e}")
+        raise
 
 # ============================================================
 # FUNCIONES PARA MONITOREOS (CRUD SUPABASE)
