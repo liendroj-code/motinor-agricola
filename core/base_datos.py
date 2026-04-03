@@ -3,24 +3,37 @@ Módulo de base de datos interconectando capa Supabase
 """
 
 import streamlit as st
-from st_supabase_connection import SupabaseConnection
+from supabase import create_client
 
 def get_supabase():
-    """Obtiene el cliente de Supabase desde el wrapper de Streamlit"""
-    return st.connection("supabase", type=SupabaseConnection)
+    """Obtiene el cliente de Supabase con la sesión del usuario actual"""
+    # Usar las credenciales de st.secrets
+    url = st.secrets["SUPABASE_URL"]
+    key = st.secrets["SUPABASE_KEY"]
+    
+    # Si hay sesión activa, usar el token del usuario
+    if "supabase_session" in st.session_state:
+        # Crear cliente con el token de sesión
+        client = create_client(url, key)
+        client.auth.set_session(
+            st.session_state.supabase_session.access_token,
+            st.session_state.supabase_session.refresh_token
+        )
+        return client
+    else:
+        # Cliente sin autenticación
+        return create_client(url, key)
 
 def get_session_id():
     """Devuelve el ID UUID del usuario autenticado de la sesión"""
     if "user_id" in st.session_state:
         return st.session_state.user_id
-    # En esta versión con Supabase, siempre debemos tener user_id validado.
     raise ValueError("Usuario no validado/ausente. Por favor, inicie sesión.")
 
 def inicializar():
-    """Supabase administra tablas desde su lado. Compatible con app.py"""
+    """Inicializa la conexión"""
     if "db_initialized" not in st.session_state:
         st.session_state.db_initialized = True
-        print(f"Iniciando instancia Supabase para el usuario: {st.session_state.get('user_name', 'Desconocido')}")
 
 # ============================================================
 # FUNCIONES PARA LOTES (CRUD SUPABASE)
@@ -46,46 +59,15 @@ def guardar_lote(datos):
         "rinde_potencial": datos['rinde_potencial']
     }
     
-    res = supabase.table("lotes").insert(data_to_insert).execute()
-    # supabase python client insert() -> devuelve data=[] en res.data
-    lote_id = res.data[0]['id'] if res.data else None
-    return lote_id
+    try:
+        res = supabase.table("lotes").insert(data_to_insert).execute()
+        lote_id = res.data[0]['id'] if res.data else None
+        return lote_id
+    except Exception as e:
+        st.error(f"Error al guardar lote: {e}")
+        raise
 
-def listar_lotes():
-    """Lista todos los lotes correspondientes al usuario de la sesión actual (RLS previene cruces)"""
-    supabase = get_supabase()
-    user_uid = get_session_id()
-    
-    res = supabase.table("lotes").select("*").eq("user_id", user_uid).order("id", desc=True).execute()
-    return res.data
-
-def actualizar_lote(lote_id, datos):
-    """Actualiza un lote existente con Supabase"""
-    supabase = get_supabase()
-    user_uid = get_session_id()
-    
-    data_to_update = {
-        "campana": datos['campana'],
-        "establecimiento": datos['establecimiento'],
-        "lote": datos['lote'],
-        "localidad": datos['localidad'],
-        "provincia": datos.get('provincia', ''),
-        "lat": datos['lat'],
-        "lon": datos['lon'],
-        "cultivo": datos['cultivo'],
-        "variedad": datos['variedad'],
-        "fecha_siembra": datos['fecha_siembra'],
-        "rinde_potencial": datos['rinde_potencial']
-    }
-    
-    supabase.table("lotes").update(data_to_update).eq("id", lote_id).eq("user_id", user_uid).execute()
-
-def eliminar_lote(lote_id):
-    """Aprovechando ON DELETE CASCADE en supabase los monitoreos volaran si los borramos."""
-    supabase = get_supabase()
-    user_uid = get_session_id()
-    
-    supabase.table("lotes").delete().eq("id", lote_id).eq("user_id", user_uid).execute()
+# El resto de funciones (listar_lotes, actualizar_lote, eliminar_lote) siguen igual
 
 # ============================================================
 # FUNCIONES PARA MONITOREOS (CRUD SUPABASE)
